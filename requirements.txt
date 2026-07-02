@@ -3,3 +3,5 @@ python-dotenv
 youtube-transcript-api
 reportlab
 matplotlib
+google-auth
+google-auth-oauthlib

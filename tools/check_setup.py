@@ -19,13 +19,17 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 REQUIRED_VARS = {
     "YOUTUBE_API_KEY": "유튜브 데이터 수집 (Google Cloud Console에서 발급)",
-    "EMAIL_ADDRESS": "이메일 발송용 Gmail 주소",
-    "EMAIL_APP_PASSWORD": "Gmail 앱 비밀번호 (2단계 인증 후 발급)",
-    "NOTION_TOKEN": "노션 Integration 토큰 (notion.so/my-integrations)",
-    "NOTION_DATABASE_ID": "노션에 기록할 데이터베이스 ID",
+    "EMAIL_ADDRESS": "이메일 발송/수신용 Gmail 주소",
+    "GOOGLE_OAUTH_CLIENT_ID": "Gmail API OAuth 클라이언트 ID",
+    "GOOGLE_OAUTH_CLIENT_SECRET": "Gmail API OAuth 클라이언트 보안 비밀",
+    "GOOGLE_OAUTH_REFRESH_TOKEN": "Gmail API 리프레시 토큰 (tools/_oauth_setup_gmail.py로 최초 1회 발급)",
+    "GOOGLE_SHEET_ID": "기록할 구글 시트 ID (시트 URL의 /d/ 다음 부분)",
 }
 OPTIONAL_VARS = {
     "REPORT_RECIPIENT_EMAIL": "리포트 받을 이메일 (비워두면 EMAIL_ADDRESS 자기 자신)",
+}
+REQUIRED_FILES = {
+    ROOT_DIR / "credentials.json": "구글 서비스 계정 키 (Google Cloud Console > IAM 및 관리자 > 서비스 계정 > 키)",
 }
 
 
@@ -42,6 +46,13 @@ def main():
             print(f"[누락]    {name}  <- {description}")
             missing.append(name)
 
+    for path, description in REQUIRED_FILES.items():
+        if path.exists():
+            print(f"[OK]      {path.name}")
+        else:
+            print(f"[누락]    {path.name}  <- {description}")
+            missing.append(path.name)
+
     for name, description in OPTIONAL_VARS.items():
         value = os.environ.get(name)
         status = "OK" if value else "비어있음(선택)"
@@ -50,7 +61,7 @@ def main():
     print()
     if missing:
         print(f"{len(missing)}개 항목이 비어있습니다: {', '.join(missing)}")
-        print("claude.ai Settings > Environments (클라우드 실행) 또는 로컬 .env 파일(로컬 테스트)에 값을 채워주세요.")
+        print("claude.ai Routine 프롬프트(클라우드 실행) 또는 로컬 .env/credentials.json(로컬 테스트)에 값을 채워주세요.")
         sys.exit(1)
 
     print("모든 필수 항목이 준비됐습니다. 다음 단계로 진행하세요.")

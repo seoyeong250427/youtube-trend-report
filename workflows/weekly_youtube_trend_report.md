@@ -5,20 +5,22 @@
 매주 일요일 저녁 8시(한국 시간), "수익성 브랜드 / 콘텐츠 수익화 / 1인 사업 런칭" 분야 유튜브 트렌드를 수집·분석해서:
 1. 브랜드 PDF 리포트(인기 주제, 포맷 분석, 이번 주 콘텐츠 주제 추천)를 만들고
 2. Gmail로 발송하고
-3. 분석 데이터를 노션 데이터베이스에 누적 기록한다.
+3. 분석 데이터를 구글 시트에 누적 기록한다.
 
-이 Workflow는 클라우드 Routine(`/schedule`)으로 실행되는 것을 전제로 한다. Routine은 매 실행마다 이 저장소를 새로 clone하므로, 로컬 `.env`는 존재하지 않는다 — 아래 "필요한 환경변수"는 claude.ai Settings → Environments의 Environment variables에 등록되어 있어야 한다.
+이 Workflow는 클라우드 Routine(`/schedule`)으로 실행되는 것을 전제로 한다. Routine은 매 실행마다 이 저장소를 새로 clone하므로, 로컬 `.env`/`credentials.json`은 존재하지 않는다 — Routine의 실행 프롬프트 안에 이 값들을 직접 넣어서 세션 시작 시 `.env`와 `credentials.json`을 만들도록 지시해야 한다 (claude.ai에 별도로 환경변수를 등록하는 화면이 없기 때문).
 
-## 필요한 환경변수
+**중요 — 왜 노션이 아니라 구글 시트이고, SMTP가 아니라 Gmail API인가:** 클라우드 Routine 실행 환경의 네트워크 정책이 `googleapis.com` 계열 주소만 허용하고, `notion.com`이나 SMTP(raw TCP 소켓) 연결은 차단한다. 그래서 데이터 저장은 노션 대신 구글 시트로, 이메일은 SMTP 대신 Gmail API(OAuth)로 바꿨다. 로컬(사장님 PC)에서 실행할 때는 이 제약이 없어서 노션/SMTP도 원래 잘 됐었다.
+
+## 필요한 값 (Routine 프롬프트에 직접 포함되어 있음)
 
 | 이름 | 용도 |
 |---|---|
 | `YOUTUBE_API_KEY` | YouTube Data API v3 호출 |
-| `EMAIL_ADDRESS` | 발신 Gmail 주소 |
-| `EMAIL_APP_PASSWORD` | Gmail 앱 비밀번호 (16자리) |
+| `EMAIL_ADDRESS` | 발신/수신 기본 Gmail 주소 |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` / `GOOGLE_OAUTH_REFRESH_TOKEN` | Gmail API 발송용 OAuth (최초 1회 `tools/_oauth_setup_gmail.py`로 발급) |
 | `REPORT_RECIPIENT_EMAIL` | 수신 이메일 (비워두면 발신자 자신에게 발송) |
-| `NOTION_TOKEN` | Notion Integration 토큰 |
-| `NOTION_DATABASE_ID` | 기록할 Notion 데이터베이스 ID |
+| `GOOGLE_SHEET_ID` | 기록할 구글 시트 ID |
+| `credentials.json` (파일) | 구글 시트용 서비스 계정 키 |
 
 ## 실행 순서
 
@@ -47,7 +49,7 @@ python tools/youtube_trends.py --output .tmp/youtube_trends.json
 - **이번 주 콘텐츠 주제 추천 3~5개**: 이번 주 뜨는 주제/포맷을 참고해서, "수익성 브랜드/콘텐츠 수익화/1인 사업" 채널이 만들면 좋을 구체적인 콘텐츠 주제와 그 이유
 - **전체 요약**: 2~3문장
 
-`generate_report_pdf.py`와 `notion_logger.py`가 요구하는 정확한 JSON 스키마는 `tools/generate_report_pdf.py` 상단 docstring을 참고할 것. 스키마를 벗어나면 두 Tool 모두 조용히 빈 섹션을 만들거나 에러를 낼 수 있으니 필드명을 정확히 맞춘다.
+`generate_report_pdf.py`와 `sheets_logger.py`가 요구하는 정확한 JSON 스키마는 `tools/generate_report_pdf.py` 상단 docstring을 참고할 것. 스키마를 벗어나면 두 Tool 모두 조용히 빈 섹션을 만들거나 에러를 낼 수 있으니 필드명을 정확히 맞춘다.
 
 ### ③ PDF 생성 (Tool)
 ```
@@ -58,17 +60,17 @@ python tools/generate_report_pdf.py --input .tmp/analysis.json --output .tmp/rep
 ```
 python tools/send_email.py --pdf .tmp/report_<YYYY-WW>.pdf --subject "주간 유튜브 트렌드 리포트 (<주차>)" --body "<analysis.json의 summary 내용>"
 ```
-**실패 시:** SMTP 인증 실패(535) → 앱 비밀번호가 만료/변경됐을 가능성. 사장님께 재발급 요청 필요, 이번 주는 리포트를 `.tmp/`에 남겨두고 실패를 보고.
+**실패 시:** 401/invalid_grant 에러 → refresh_token이 만료됐거나 OAuth 동의 화면이 "테스트 중" 상태에서 7~14일 지난 것. 사장님께 OAuth 동의 화면을 "프로덕션"으로 게시하거나 `tools/_oauth_setup_gmail.py`를 다시 실행해 토큰을 재발급해달라고 요청.
 
-### ⑤ 노션 기록 (Tool)
+### ⑤ 구글 시트 기록 (Tool)
 ```
-python tools/notion_logger.py --input .tmp/analysis.json
+python tools/sheets_logger.py --input .tmp/analysis.json
 ```
-**실패 시:** "object not found" 에러 → 데이터베이스에 Integration이 연결(공유)되어 있지 않은 것. 사장님께 노션에서 Connections 설정을 확인해달라고 요청.
+**실패 시:** 403/404 에러 → 시트가 `credentials.json` 안의 `client_email`과 "편집자"로 공유되어 있지 않은 것. 사장님께 구글 시트 공유 설정을 확인해달라고 요청.
 
 ## 완료 기준
 
-이메일이 실제로 발송되고 노션에 새 행이 추가된 것을 각 Tool의 출력 메시지로 확인한 뒤 종료. 하나라도 실패하면 어느 단계에서 실패했는지, 원인이 뭔지 사람이 이해할 수 있는 말로 사장님께 보고한다 (에러 메시지 그대로 던지지 말 것).
+이메일이 실제로 발송되고 구글 시트에 새 행이 추가된 것을 각 Tool의 출력 메시지로 확인한 뒤 종료. 하나라도 실패하면 어느 단계에서 실패했는지, 원인이 뭔지 사람이 이해할 수 있는 말로 사장님께 보고한다 (에러 메시지 그대로 던지지 말 것).
 
 ## 알아둘 점
 
