@@ -22,6 +22,12 @@
 
 ## 실행 순서
 
+### ⓪ 사전 점검 (Tool)
+```
+python tools/check_setup.py
+```
+필요한 키/토큰이 다 준비됐는지 먼저 확인한다. 여기서 실패하면(exit code 1) 바로 중단하고, 뭐가 비어있는지 사장님께 명확히 보고한다 — "PDF가 안 생겼다" 같은 모호한 보고 대신 "NOTION_TOKEN이 비어있어서 실행이 안 됐다"처럼 정확히 말한다.
+
 ### ① 데이터 수집 (Tool)
 ```
 python tools/youtube_trends.py --output .tmp/youtube_trends.json
