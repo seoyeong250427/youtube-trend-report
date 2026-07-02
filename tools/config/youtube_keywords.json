@@ -1,0 +1,22 @@
+{
+  "description": "매주 유튜브 트렌드 검색에 쓰는 키워드 목록. 코드를 건드리지 않고 이 파일만 수정해서 검색 범위를 바꿀 수 있습니다.",
+  "lookback_days": 10,
+  "max_videos_per_keyword": 15,
+  "max_total_videos": 60,
+  "keywords": [
+    "1인 사업",
+    "1인 창업",
+    "부업 추천",
+    "퍼스널 브랜드 사업",
+    "온라인 사업 시작",
+    "콘텐츠 수익화",
+    "수익성 좋은 사업",
+    "solopreneur",
+    "personal brand business",
+    "content monetization",
+    "profitable business ideas",
+    "start a business alone",
+    "passive income business",
+    "online business ideas"
+  ]
+}
