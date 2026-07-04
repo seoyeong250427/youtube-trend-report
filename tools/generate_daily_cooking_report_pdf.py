@@ -6,7 +6,13 @@
 
 입력 JSON 스키마: tools/cooking_daily_trends.py 출력을 Agent가 읽고 직접 작성.
 예시는 .tmp/cooking_daily_analysis.json 참고 (date_label, summary, data_caveats,
-keyword_trend, watch_channels, recommendations, scripts, closing).
+keyword_trend, watch_channels, recommendations, scripts, helpful_topics,
+helpful_scripts, closing).
+
+- recommendations/scripts: 트렌드·후킹 기반 추천 (알고리즘 편승용)
+- helpful_topics/helpful_scripts: 트렌드와 무관하게, 시청자에게 실제로 도움되는
+  요리 지식/노하우 기반 추천 (조리 원리, 보관법, 도구 관리, 낭비 줄이기 등).
+  각각 recommendations/scripts와 동일한 스키마(title/reason, number/title/type/beats)
 
 사용법:
     python tools/generate_daily_cooking_report_pdf.py --input .tmp/analysis.json --output .tmp/report.pdf
@@ -140,9 +146,7 @@ def build_pdf(data: dict, output_path: Path, tmp_dir: Path):
             if rec.get("reason"):
                 story.append(Paragraph(rec["reason"], styles["body"]))
 
-    scripts = data.get("scripts", [])
-    if scripts:
-        story.append(Paragraph("예시 대본 5개", styles["h2"]))
+    def render_scripts(scripts: list[dict]):
         for script in scripts:
             story.append(Spacer(1, 10))
             header = Table(
@@ -159,6 +163,28 @@ def build_pdf(data: dict, output_path: Path, tmp_dir: Path):
                 )
                 row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
                 story.append(row)
+
+    scripts = data.get("scripts", [])
+    if scripts:
+        story.append(Paragraph("예시 대본 5개 (트렌드·후킹 기반)", styles["h2"]))
+        render_scripts(scripts)
+
+    helpful_topics = data.get("helpful_topics", [])
+    if helpful_topics:
+        story.append(Paragraph("시청자에게 실질적으로 도움되는 주제 5개", styles["h2"]))
+        story.append(Paragraph(
+            "트렌드/후킹이 아니라, 실제 요리 지식과 노하우로 시청자에게 도움이 되는 주제입니다.",
+            styles["muted"],
+        ))
+        for i, topic in enumerate(helpful_topics, 1):
+            story.append(Paragraph(f"{i}. {topic.get('title', '')}", styles["rec_title"]))
+            if topic.get("reason"):
+                story.append(Paragraph(topic["reason"], styles["body"]))
+
+    helpful_scripts = data.get("helpful_scripts", [])
+    if helpful_scripts:
+        story.append(Paragraph("위 주제 대본 5개 (정보성)", styles["h2"]))
+        render_scripts(helpful_scripts)
 
     if data.get("closing"):
         story.append(Spacer(1, 8))
