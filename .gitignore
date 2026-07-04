@@ -7,3 +7,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# 로컬에서 canvas-design 스킬 사용해보려고 설치했던 폴더 (폰트 파일 손상되어 안 씀,
+# 자동화 실행에 필요 없음)
+.claude/
